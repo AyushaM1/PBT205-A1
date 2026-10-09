@@ -1,6 +1,7 @@
 import sys
 import threading
 import pika
+import json
 
 if len(sys.argv) < 3:
     print("Usage: python chat.py <username> <room>")
@@ -43,7 +44,8 @@ def receive_messages():
     )
 
     def receive_message(ch, method, properties, body):
-        print(f"\n{body.decode()}")
+        data = json.loads(body.decode("utf-8"))
+        print(f'\n{data["username"]}: {data["message"]}')
         print("> ", end="", flush=True)
 
     channel.basic_consume(
@@ -94,9 +96,9 @@ while True:
 
     if message.strip():
 
-        full_message = f"{username}: {message}"
-
-        channel.basic_publish(
+         data = {"type": "chat", "username": username, "room": room, "message": message}
+         full_message = json.dumps(data)
+         channel.basic_publish(
             exchange=room,
             routing_key="",
             body=full_message
