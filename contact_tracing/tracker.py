@@ -44,6 +44,12 @@ channel.queue_bind(
 def handle_position(ch, method, properties, body):
     data = json.loads(body.decode("utf-8"))
 
+    if data.get("type") == "remove":
+        person = data["person"]
+        positions.pop(person, None)
+        print(f"{person} removed from tracking")
+        return
+
     person = data["person"]
     x = data["x"]
     y = data["y"]

@@ -6,6 +6,9 @@ import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
 import pika
+import subprocess
+import sys
+from pathlib import Path
 
 
 class ContactGUI:
@@ -16,6 +19,7 @@ class ContactGUI:
 
         self.grid_size = 10
         self.positions = {}
+        self.person_processes = {}
         self.messages = queue.Queue()
         self.running = True
 
@@ -56,6 +60,47 @@ class ContactGUI:
             text="Connecting to RabbitMQ..."
         )
         self.status_label.pack(pady=5)
+        
+        # Add Person controls
+        person_frame = tk.Frame(self.root)
+        person_frame.pack(pady=10)
+
+        tk.Label(
+            person_frame,
+            text="Add Person:"
+        ).pack(side="left", padx=5)
+
+        self.new_person_entry = tk.Entry(
+            person_frame,
+            width=15
+        )
+        self.new_person_entry.pack(side="left", padx=5)
+
+        tk.Label(
+            person_frame,
+            text="Speed (seconds):"
+        ).pack(side="left", padx=5)
+
+        self.speed_entry = tk.Entry(
+            person_frame,
+            width=6
+        )
+        self.speed_entry.insert(0, "1")
+        self.speed_entry.pack(side="left", padx=5)
+
+        tk.Button(
+            person_frame,
+            text="Add Person",
+            command=self.add_person
+        ).pack(side="left", padx=5)
+
+        tk.Button(
+            person_frame,
+            text="Remove Person",
+            command=self.remove_person,
+            width=15
+        ).pack(side="left", padx=5)
+
 
         self.canvas = tk.Canvas(
             self.root,
@@ -90,6 +135,125 @@ class ContactGUI:
         self.results.pack(pady=10)
 
         self.draw_grid()
+
+    
+    def add_person(self):
+        name = self.new_person_entry.get().strip()
+
+        if not name:
+            messagebox.showwarning(
+                "Missing name",
+                "Please enter a person name."
+            )
+            return
+
+        try:
+            speed = float(self.speed_entry.get())
+
+            if speed <= 0:
+                raise ValueError
+
+        except ValueError:
+            messagebox.showerror(
+                "Invalid speed",
+                "Enter a speed greater than zero."
+            )
+            return
+
+        # Prevent duplicate people from this GUI
+        if name in self.person_processes or name in self.positions:
+            messagebox.showwarning(
+                "Duplicate person",
+                f"{name} already exists."
+            )
+            return
+
+        script = Path(__file__).resolve().parent / "person.py"
+
+        try:
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(script),
+                    "--name", name,
+                    "--speed", str(speed),
+                    "--size", str(self.grid_size)
+                ],
+                cwd=str(script.parent),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+            self.person_processes[name] = process
+            self.new_person_entry.delete(0, "end")
+
+            self.status_label.config(
+                text=f"Started simulation for {name}"
+            )
+
+        except Exception as exc:
+            messagebox.showerror(
+                "Error",
+                f"Could not start person:\n{exc}"
+            )
+
+    
+    def remove_person(self):
+        name = self.new_person_entry.get().strip()
+
+        if not name:
+            messagebox.showwarning(
+                "Missing name",
+                "Enter the name of the person to remove."
+            )
+            return
+
+        process = self.person_processes.get(name)
+
+        if process is None:
+            messagebox.showwarning(
+                "Person not found",
+                "This person was not started by this GUI."
+            )
+            return
+
+        if process.poll() is None:
+            process.terminate()
+
+        del self.person_processes[name]
+        try:
+            with pika.BlockingConnection(
+                pika.ConnectionParameters(host="localhost")
+            ) as connection:
+                channel = connection.channel()
+                channel.exchange_declare(
+                    exchange="position",
+                    exchange_type="fanout"
+                )
+                channel.basic_publish(
+                    exchange="position",
+                    routing_key="",
+                    body=json.dumps({
+                        "type": "remove",
+                        "person": name
+                    })
+                )
+        except Exception as exc:
+            messagebox.showwarning(
+                "RabbitMQ warning",
+                f"Removal message failed: {exc}"
+            )
+
+        # Remove person from the visual grid
+        self.positions.pop(name, None)
+        self.draw_grid()
+
+        self.new_person_entry.delete(0, "end")
+
+        self.status_label.config(
+            text=f"Removed {name} from the simulation"
+        )
+
 
     def change_grid(self):
         try:
@@ -284,9 +448,16 @@ class ContactGUI:
         self.results.insert("end", text)
         self.results.config(state="disabled")
 
+    
     def close(self):
         self.running = False
+
+        for process in self.person_processes.values():
+            if process.poll() is None:
+                process.terminate()
+
         self.root.destroy()
+
 
 
 if __name__ == "__main__":
