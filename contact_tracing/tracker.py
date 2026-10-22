@@ -4,7 +4,6 @@ import time
 from datetime import datetime
 import pika
 
-# Store people's latest positions and contact history
 positions = {}
 contacts = {}
 
@@ -13,14 +12,12 @@ connection = pika.BlockingConnection(
 )
 channel = connection.channel()
 
-# RabbitMQ exchanges
 for exchange in ["position", "query", "query-response"]:
     channel.exchange_declare(
         exchange=exchange,
         exchange_type="fanout"
     )
-
-# Receive position updates
+    
 position_queue = channel.queue_declare(
     queue="", exclusive=True
 ).method.queue
@@ -30,7 +27,6 @@ channel.queue_bind(
     queue=position_queue
 )
 
-# Receive contact history queries
 query_queue = channel.queue_declare(
     queue="", exclusive=True
 ).method.queue
@@ -58,7 +54,6 @@ def handle_position(ch, method, properties, body):
 
     print(f"{person} moved to ({x}, {y})")
 
-    # Detect people occupying the same square
     for other, other_position in positions.items():
         if other == person:
             continue

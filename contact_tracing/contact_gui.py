@@ -61,7 +61,6 @@ class ContactGUI:
         )
         self.status_label.pack(pady=5)
         
-        # Add Person controls
         person_frame = tk.Frame(self.root)
         person_frame.pack(pady=10)
 
@@ -160,7 +159,6 @@ class ContactGUI:
             )
             return
 
-        # Prevent duplicate people from this GUI
         if name in self.person_processes or name in self.positions:
             messagebox.showwarning(
                 "Duplicate person",
@@ -244,7 +242,6 @@ class ContactGUI:
                 f"Removal message failed: {exc}"
             )
 
-        # Remove person from the visual grid
         self.positions.pop(name, None)
         self.draw_grid()
 
@@ -277,7 +274,6 @@ class ContactGUI:
         width = 440
         cell = width / size
 
-        # Avoid drawing thousands of grid lines
         if size <= 50:
             for i in range(size + 1):
                 p = i * cell
@@ -465,3 +461,4 @@ if __name__ == "__main__":
     app = ContactGUI(root)
     root.mainloop()
 
+    
