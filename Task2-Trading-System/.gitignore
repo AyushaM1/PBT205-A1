@@ -1,0 +1,5 @@
+target/
+.vscode/
+.idea/
+*.class
+closing_prices.csv
