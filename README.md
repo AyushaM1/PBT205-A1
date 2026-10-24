@@ -33,7 +33,7 @@ Each task folder has its own README with detailed run steps, tests and limitatio
 | Docker (Docker Desktop) | Running RabbitMQ |
 | Python 3 and `pika` | Task 1: Chat |
 | Java 17 and Maven 3.x | Task 2: Trading system |
-| [ADD: tools for Task 3] | Task 3: Contact tracing |
+| Python and Pika  | Task 3: Contact tracing |
 
 ## Setup: start RabbitMQ (once, for all three tasks)
 
