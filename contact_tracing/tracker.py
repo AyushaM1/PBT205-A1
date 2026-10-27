@@ -1,23 +1,26 @@
 
 import json
 import time
-from datetime import datetime
 import pika
 
+#to create dictionaries
 positions = {}
 contacts = {}
 
+#connect to rabbitMQ
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host="localhost")
 )
 channel = connection.channel()
 
+#declare rabbitMQ exchange
 for exchange in ["position", "query", "query-response"]:
     channel.exchange_declare(
         exchange=exchange,
         exchange_type="fanout"
     )
-    
+
+#create and bind queues
 position_queue = channel.queue_declare(
     queue="", exclusive=True
 ).method.queue
@@ -36,8 +39,8 @@ channel.queue_bind(
     queue=query_queue
 )
 
-
-def handle_position(ch, method, properties, body):
+#contact detection 
+def handle_position(ch, method, properties, body): #will convert incoming JSON data into a Python dict
     data = json.loads(body.decode("utf-8"))
 
     if data.get("type") == "remove":
